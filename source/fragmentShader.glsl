@@ -17,6 +17,10 @@ uniform float Ns;
 uniform vec3 lightColour;
 uniform vec3 lightPosition;
 
+uniform float constant;
+uniform float linear;
+uniform float quadratic;
+
 void main()
 {
     // Object colour
@@ -40,6 +44,15 @@ void main()
     // fragment colour
     fragmentColour = ambient + diffuse + specular;
 
+ 
 
+    // Attenuation
+    float distance    = length(lightPosition - fragmentPosition);
+    float attenuation = 1.0 / (constant + linear * distance + quadratic * distance * distance);
+
+
+
+    // Fragment colour
+    fragmentColour = (ambient + diffuse + specular) * attenuation;
     
 }

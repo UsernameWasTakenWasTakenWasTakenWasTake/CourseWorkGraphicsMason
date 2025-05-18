@@ -217,6 +217,8 @@ void Model::addTexture(const char *path, const std::string type)
     textures.push_back(texture);
 }
 
+
+
 unsigned int Model::loadTexture(const char *path)
 {
 
@@ -251,5 +253,8 @@ unsigned int Model::loadTexture(const char *path)
         stbi_image_free(data);
     }
 
+
+
     return textureID;
 }
+
