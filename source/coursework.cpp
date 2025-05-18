@@ -3,6 +3,7 @@
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include <glm/gtc/matrix_transform.hpp>
 
 #include <common/shader.hpp>
 #include <common/texture.hpp>
@@ -13,6 +14,19 @@
 
 // Function prototypes
 void keyboardInput(GLFWwindow *window);
+
+// Create camera object
+Camera camera(glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, -2.0f));
+
+// Object struct
+struct Object
+{
+    glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f);
+    glm::vec3 rotation = glm::vec3(0.0f, 1.0f, 0.0f);
+    glm::vec3 scale = glm::vec3(1.0f, 1.0f, 1.0f);
+    float angle = 0.0f;
+    std::string name;
+};
 
 int main( void )
 {
@@ -57,101 +71,121 @@ int main( void )
     // -------------------------------------------------------------------------
     // End of window creation
     // =========================================================================
-    
-   // Define vertex positions
-  /*  static const float vertices[] = {
-        // x     y     z
-        -0.5f, -0.5f, 0.0f,
-         0.5f, -0.5f, 0.0f,
-         0.5f,  0.5f, 0.0f,
-        -0.5f, -0.5f, 0.0f,
-         0.5f,  0.5f, 0.0f,
-        -0.5f,  0.5f, 0.0f
+
+    // Enable depth test
+    glEnable(GL_DEPTH_TEST);
+
+    // Ensure we can capture keyboard inputs
+    glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
+
+    // Define cube object
+    // Define vertices
+    const float vertices[] = {
+        // front
+        -1.0f, -1.0f,  1.0f,    //              + ------ +
+         1.0f, -1.0f,  1.0f,    //             /|       /|
+         1.0f,  1.0f,  1.0f,    //   y        / |      / |
+        -1.0f, -1.0f,  1.0f,    //   |       + ------ +  |
+         1.0f,  1.0f,  1.0f,    //   + - x   |  + ----|- +
+        -1.0f,  1.0f,  1.0f,    //  /        | /      | /
+         // right               // z         |/       |/
+         1.0f, -1.0f,  1.0f,    //           + ------ +
+         1.0f, -1.0f, -1.0f,
+         1.0f,  1.0f, -1.0f,
+         1.0f, -1.0f,  1.0f,
+         1.0f,  1.0f, -1.0f,
+         1.0f,  1.0f,  1.0f,
+         // back
+         1.0f, -1.0f, -1.0f,
+        -1.0f, -1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+         1.0f, -1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+         1.0f,  1.0f, -1.0f,
+         // left
+         -1.0f, -1.0f, -1.0f,
+         -1.0f, -1.0f,  1.0f,
+         -1.0f,  1.0f,  1.0f,
+         -1.0f, -1.0f, -1.0f,
+         -1.0f,  1.0f,  1.0f,
+         -1.0f,  1.0f, -1.0f,
+         // bottom
+         -1.0f, -1.0f, -1.0f,
+          1.0f, -1.0f, -1.0f,
+          1.0f, -1.0f,  1.0f,
+         -1.0f, -1.0f, -1.0f,
+          1.0f, -1.0f,  1.0f,
+         -1.0f, -1.0f,  1.0f,
+         // top
+         -1.0f,  1.0f,  1.0f,
+          1.0f,  1.0f,  1.0f,
+          1.0f,  1.0f, -1.0f,
+         -1.0f,  1.0f,  1.0f,
+          1.0f,  1.0f, -1.0f,
+         -1.0f,  1.0f, -1.0f,
     };
 
     // Define texture coordinates
-    static const float uv[] = {
-        // u    v
-        0.0f,  0.0f,    // triangle 1
-        1.0f,  0.0f,
-        1.0f,  1.0f,
-        0.0f,  0.0f,    // triangle 2
-        1.0f,  1.0f,
-        0.0f,  1.0f
-    };
-    */
-    // Define vertex colours
-    static const float colours[] = {
-        1.0f, 0.0f, 0.0f,    // triangle 1 (red)
-        1.0f, 0.0f, 0.0f,
-        1.0f, 0.0f, 0.0f,
-       
-    };
-    
-
-    // Define vertex positions
-    static const float vertices[] = {
-        // x     y     z      index
-        -0.5f, -0.5f, 0.0f,  // 0       3 -- 2
-         0.5f, -0.5f, 0.0f,  // 1       |  / |  
-         0.5f,  0.5f, 0.0f,  // 2       | /  |
-        -0.5f,  0.5f, 0.0f   // 3       0 -- 1
-    };
-
-    // Define texture coordinates
-    static const float uv[] = {
-        // u    v      index
-        0.0f,  0.0f,  // 0
-        1.0f,  0.0f,  // 1
-        1.0f,  1.0f,  // 2
-        0.0f,  1.0f,  // 3
+    const float uv[] = {
+        // front
+        0.0f, 0.0f,     // vertex coordinates are the same for each side
+        1.0f, 0.0f,     // of the cube so repeat every six vertices
+        1.0f, 1.0f,
+        0.0f, 0.0f,
+        1.0f, 1.0f,
+        0.0f, 1.0f,
+        // right
+        0.0f, 0.0f,
+        1.0f, 0.0f,
+        1.0f, 1.0f,
+        0.0f, 0.0f,
+        1.0f, 1.0f,
+        0.0f, 1.0f,
+        // back
+        0.0f, 0.0f,
+        1.0f, 0.0f,
+        1.0f, 1.0f,
+        0.0f, 0.0f,
+        1.0f, 1.0f,
+        0.0f, 1.0f,
+        // left
+        0.0f, 0.0f,
+        1.0f, 0.0f,
+        1.0f, 1.0f,
+        0.0f, 0.0f,
+        1.0f, 1.0f,
+        0.0f, 1.0f,
+        // bottom
+        0.0f, 0.0f,
+        1.0f, 0.0f,
+        1.0f, 1.0f,
+        0.0f, 0.0f,
+        1.0f, 1.0f,
+        0.0f, 1.0f,
+        // top
+        0.0f, 0.0f,
+        1.0f, 0.0f,
+        1.0f, 1.0f,
+        0.0f, 0.0f,
+        1.0f, 1.0f,
+        0.0f, 1.0f,
     };
 
     // Define indices
-    static const unsigned int indices[] = {
-        0, 1, 2,  // lower-right triangle
-        0, 2, 3   // upper-left triangle
+    unsigned int indices[] = {
+        0,   1,  2,  3,  4,  5,     // front
+        6,   7,  8,  9, 10, 11,     // right
+        12, 13, 14, 15, 16, 17,     // back
+        18, 19, 20, 21, 22, 23,     // left
+        24, 25, 26, 27, 28, 29,     // bottom
+        30, 31, 32, 33, 34, 35      // top
     };
 
-    // Create colour buffer
-    unsigned int colourBuffer;
-    glGenBuffers(1, &colourBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, colourBuffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(colours), colours, GL_STATIC_DRAW);
 
     // Create the Vertex Array Object (VAO)
     unsigned int VAO;
     glGenVertexArrays(1, &VAO);
     glBindVertexArray(VAO);
-
-    // Compile shader program
-    unsigned int shaderID = LoadShaders("vertexShader.glsl", "fragmentShader.glsl");
-
-    // Create and bind texture
-    unsigned int texture;
-    glGenTextures(1, &texture);
-    glBindTexture(GL_TEXTURE_2D, texture);
-
-    // Load texture image from file
-    const char* path = "../assets/crate.jpg";
-    int width, height, nChannels;
-    stbi_set_flip_vertically_on_load(true);
-    unsigned char* data = stbi_load(path, &width, &height, &nChannels, 0);
-
-    if (data)
-        std::cout << "Texture loaded." << std::endl;
-    else
-        std::cout << "Texture not loaded. Check the path." << std::endl;
-
-    // Specify 2D texture
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-    glGenerateMipmap(GL_TEXTURE_2D);
-
-    // Free the image from the memory
-    stbi_image_free(data);
-
-    // Use the shader program
-    glUseProgram(shaderID);
 
     // Create Vertex Buffer Object (VBO)
     unsigned int VBO;
@@ -171,17 +205,70 @@ int main( void )
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-    // Bind the texture to the VAO
+    // Compile shader program
+    unsigned int shaderID = LoadShaders("vertexShader.glsl", "fragmentShader.glsl");
+
+    /*// Create and bind texture
+    unsigned int texture;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    */
+
+    // Load the textures
+    unsigned int texture;
+    texture = loadTexture("../assets/crate.jpg");
+
+   /* if (data)
+        std::cout << "Texture loaded." << std::endl;
+    else
+        std::cout << "Texture not loaded. Check the path." << std::endl;
+
+    // Specify 2D texture
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+    glGenerateMipmap(GL_TEXTURE_2D);
+    
+    // Free the image from the memory
+    stbi_image_free(data);
+    */
+    // Use the shader program
+    glUseProgram(shaderID);
+    unsigned int textureID;
+    textureID = glGetUniformLocation(shaderID, "texture");
+    glUniform1i(textureID, 0);
+
+   /* // Bind the texture to the VAO
     glBindTexture(GL_TEXTURE_2D, texture);
     glBindVertexArray(VAO);
+   */
+    
+   // Cube positions
+    glm::vec3 positions[] = {
+        glm::vec3(0.0f,  0.0f,  0.0f),
+        glm::vec3(2.0f,  5.0f, -10.0f),
+        glm::vec3(-3.0f, -2.0f, -3.0f),
+        glm::vec3(-4.0f, -2.0f, -8.0f),
+        glm::vec3(2.0f,  2.0f, -6.0f),
+        glm::vec3(-4.0f,  3.0f, -8.0f),
+        glm::vec3(0.0f, -2.0f, -5.0f),
+        glm::vec3(4.0f,  2.0f, -4.0f),
+        glm::vec3(2.0f,  0.0f, -2.0f),
+        glm::vec3(-1.0f,  1.0f, -2.0f)
+    };
 
-    // Send the colour buffer to the shaders
-    glEnableVertexAttribArray(1);
-    glBindBuffer(GL_ARRAY_BUFFER, colourBuffer);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+    // Add cubes to objects vector
+    std::vector<Object> objects;
+    Object object;
+    object.name = "cube";
+    for (unsigned int i = 0; i < 10; i++)
+    {
+        object.position = positions[i];
+        object.rotation = glm::vec3(1.0f, 1.0f, 1.0f);
+        object.scale = glm::vec3(0.5f, 0.5f, 0.5f);
+        object.angle = Maths::radians(20.0f * i);
+        objects.push_back(object);
+    }
 
-    // Ensure we can capture keyboard inputs
-    glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
+    
 
     // Render loop
     while (!glfwWindowShouldClose(window))
@@ -191,7 +278,8 @@ int main( void )
         
         // Clear the window
         glClearColor(0.2f, 0.2f, 0.2f, 0.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
+        // Clear the window
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
         // Send the VBO to the shaders
         glEnableVertexAttribArray(0);
@@ -208,35 +296,30 @@ int main( void )
         glBindBuffer(GL_ARRAY_BUFFER, uvBuffer);
         glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
 
-         // Define the translation matrix
-        /*glm::mat4 translate;
-        translate[3][0] = 0.4f, translate[3][1] = 0.3f, translate[3][2] = 0.0f;
-        */
+        // Calculate view and projection matrices
+        camera.eye = glm::vec3(0.0f, 0.0f, 5.0f);
+        camera.target = objects[0].position;
+        camera.calculateMatrices();
 
-        glm::mat4 translate = Maths::translate(glm::vec3(2.0f, 0.6f, 0.0f));
+        // Loop through cubes and draw each one
+        for (int i = 0; i < static_cast<unsigned int>(objects.size()); i++)
+        {
+            // Calculate the model matrix
+            glm::mat4 translate = Maths::translate(objects[i].position);
+            glm::mat4 scale = Maths::scale(objects[i].scale);
+            glm::mat4 rotate = Maths::rotate(objects[i].angle, objects[i].rotation);
+            glm::mat4 model = translate * rotate * scale;
 
-       /* // Define the scaling matrix
-        glm::mat4 scale;
-        scale[0][0] = 0.4f, scale[1][1] = 0.3f, scale[2][2] = 1.0f;
-        */
+            // Calculate the MVP matrix
+            glm::mat4 MVP = camera.projection * camera.view * model;
 
-        // Define the rotation matrix
-        glm::mat4 rotate;
-        float angle = 45.0f * 3.1416f / 180.0f;
-        rotate[0][0] = cos(angle), rotate[0][1] = sin(angle);
-        rotate[1][0] = -sin(angle), rotate[1][1] = cos(angle);
+            // Send MVP matrix to the vertex shader
+            glUniformMatrix4fv(glGetUniformLocation(shaderID, "MVP"), 1, GL_FALSE, &MVP[0][0]);
 
-        glm::mat4 scale = Maths::scale(glm::vec3(0.4f, 0.3f, 1.0f));
-
-        glm::mat4 transformation = scale * rotate * translate;
-
-
-        
-        unsigned int transformationID = glGetUniformLocation(shaderID, "transformation");
-        glUniformMatrix4fv(transformationID, 1, GL_FALSE, &transformation[0][0]);
-
-        // Draw the triangles
-        glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(unsigned int), GL_UNSIGNED_INT, 0);
+            // Draw the triangles
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+            glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(unsigned int), GL_UNSIGNED_INT, 0);
+        }
 
         glDisableVertexAttribArray(0);
         glDisableVertexAttribArray(1);
@@ -247,10 +330,12 @@ int main( void )
     }
 
     // Cleanup
-    glDeleteBuffers(1, &VBO);
     glDeleteVertexArrays(1, &VAO);
+    glDeleteBuffers(1, &VBO);
+    glDeleteBuffers(1, &EBO);
+    glDeleteBuffers(1, &uvBuffer);
     glDeleteProgram(shaderID);
-    
+
     // Close OpenGL window and terminate GLFW
     glfwTerminate();
     return 0;
